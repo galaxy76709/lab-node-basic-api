@@ -10,74 +10,85 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- "Banco de Dados" em Memória ---
+// --- "Banco de Dados" em Memória para Utilizadores ---
 let users = [
   { id: 1, name: 'João Silva', email: 'joao@example.com' },
   { id: 2, name: 'Maria Santos', email: 'maria@example.com' }
 ];
 let nextUserId = 3;
 
-// --- Rotas ---
-app.use('/app', express.static(path.join(__dirname, '/public')));
+// --- "Banco de Dados" em Memória para Produtos ---
+let products = [
+  { id: 101, nome: 'Portátil Gamer', preco: 1200.50, estoque: 15 },
+  { id: 102, nome: 'Rato sem Fios', preco: 25.00, estoque: 50 }
+];
+let nextProductId = 103;
 
+
+// --- Rotas Principais ---
+app.use('/app', express.static(path.join(__dirname, '/public')));
 app.get('/', (req, res) => {
-  res.send('<h1>API está no ar!</h1><p>Use as rotas /users para o CRUD.</p>');
+  res.send('<h1>API está no ar!</h1><p>Rotas disponíveis: /users e /produtos</p>');
 });
 
 // --- ROTAS DO CRUD PARA UTILIZADORES ---
-
-// READ (Ler) -> Obter todos os utilizadores
-app.get('/users', (req, res) => {
-  res.json(users);
-});
-
-// READ (Ler) -> Obter um utilizador específico pelo ID
+// ... (todo o código do CRUD de utilizadores que já tínhamos)
+app.get('/users', (req, res) => { res.json(users); });
 app.get('/users/:id', (req, res) => {
-  const userId = parseInt(req.params.id);
-  const user = users.find(u => u.id === userId);
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404).json({ message: 'Utilizador não encontrado' });
-  }
+  const user = users.find(u => u.id === parseInt(req.params.id));
+  if (user) res.json(user); else res.status(404).json({ message: 'Utilizador não encontrado' });
 });
-
-// CREATE (Criar) -> Criar um novo utilizador
 app.post('/users', (req, res) => {
-  const { name, email } = req.body;
-  if (!name || !email) {
-    return res.status(400).json({ message: 'Nome e email são obrigatórios' });
-  }
-  const newUser = { id: nextUserId++, name, email };
+  const newUser = { id: nextUserId++, ...req.body };
   users.push(newUser);
   res.status(201).json(newUser);
 });
-
-// UPDATE (Atualizar) -> Atualizar um utilizador existente
 app.put('/users/:id', (req, res) => {
-  const userId = parseInt(req.params.id);
-  const { name, email } = req.body;
-  const userIndex = users.findIndex(u => u.id === userId);
+  const userIndex = users.findIndex(u => u.id === parseInt(req.params.id));
   if (userIndex !== -1) {
-    users[userIndex].name = name || users[userIndex].name;
-    users[userIndex].email = email || users[userIndex].email;
+    users[userIndex] = { ...users[userIndex], ...req.body };
     res.json(users[userIndex]);
   } else {
     res.status(404).json({ message: 'Utilizador não encontrado' });
   }
 });
-
-// DELETE (Apagar) -> Apagar um utilizador
 app.delete('/users/:id', (req, res) => {
-  const userId = parseInt(req.params.id);
   const initialLength = users.length;
-  users = users.filter(u => u.id !== userId);
-  if (users.length < initialLength) {
-    res.status(204).send();
+  users = users.filter(u => u.id !== parseInt(req.params.id));
+  if (users.length < initialLength) res.status(204).send();
+  else res.status(404).json({ message: 'Utilizador não encontrado' });
+});
+
+
+// --- ROTAS DO CRUD PARA PRODUTOS (Seguindo a imagem) ---
+app.post('/produtos', (req, res) => {
+  const { nome, preco, estoque } = req.body;
+  if (!nome || preco === undefined || estoque === undefined) return res.status(400).json({ message: 'Nome, preço e estoque são obrigatórios' });
+  const newProduct = { id: nextProductId++, nome, preco, estoque };
+  products.push(newProduct);
+  res.status(201).json(newProduct);
+});
+app.get('/produtos', (req, res) => { res.json(products); });
+app.get('/produtos/:id', (req, res) => {
+  const product = products.find(p => p.id === parseInt(req.params.id));
+  if (product) res.json(product); else res.status(404).json({ message: 'Produto não encontrado' });
+});
+app.put('/produtos/:id', (req, res) => {
+  const productIndex = products.findIndex(p => p.id === parseInt(req.params.id));
+  if (productIndex !== -1) {
+    products[productIndex] = { ...products[productIndex], ...req.body };
+    res.json(products[productIndex]);
   } else {
-    res.status(404).json({ message: 'Utilizador não encontrado' });
+    res.status(404).json({ message: 'Produto não encontrado' });
   }
 });
+app.delete('/produtos/:id', (req, res) => {
+  const initialLength = products.length;
+  products = products.filter(p => p.id !== parseInt(req.params.id));
+  if (products.length < initialLength) res.status(204).send();
+  else res.status(404).json({ message: 'Produto não encontrado' });
+});
+
 
 // --- Inicialização do Servidor ---
 let port = process.env.PORT || 3000;
